@@ -21,7 +21,7 @@ def transform_column(column):
     return _column
 
 
-def processing(input, columns):
+def processing(input, columns, deleted):
     mydb = mysql.connector.connect(
         host="localhost",  # IP address
         user="root",  # username
@@ -29,14 +29,15 @@ def processing(input, columns):
     )
 
     my_cursor = mydb.cursor(buffered=True)
-    my_cursor.execute("DROP DATABASE IF EXISTS stackoverflow")
-    my_cursor.execute("CREATE DATABASE stackoverflow")
-    my_cursor.execute("USE stackoverflow")
 
-    my_cursor.execute("DROP TABLE IF EXISTS Questions")
-    my_cursor.execute("DROP TABLE IF EXISTS Answers")
 
-    questions = """CREATE TABLE Questions (
+    if deleted == True:
+        my_cursor.execute("DROP DATABASE IF EXISTS stackoverflow")
+        my_cursor.execute("CREATE DATABASE stackoverflow")
+        my_cursor.execute("DROP TABLE IF EXISTS Questions")
+        my_cursor.execute("DROP TABLE IF EXISTS Answers")
+
+        questions = """CREATE TABLE Questions (
                 Id int NOT null,
                 PostTypeId tinyint NULL,
                 AcceptedAnswerId int NULL,
@@ -47,7 +48,7 @@ def processing(input, columns):
                 Tags nvarchar(255) NULL
                 );
                 """
-    answers = """CREATE TABLE Answers (
+        answers = """CREATE TABLE Answers (
                     Id int NOT null,
                     PostTypeId tinyint NULL,
                     IsAccepted tinyint NULL,
@@ -56,8 +57,9 @@ def processing(input, columns):
                     Body TEXT NULL
                     );
                     """
-    my_cursor.execute(questions)
-    my_cursor.execute(answers)
+        my_cursor.execute(questions)
+        my_cursor.execute(answers)
+    my_cursor.execute("USE stackoverflow")
 
     insert_questions = "INSERT INTO Questions (Id, PostTypeId, AcceptedAnswerId, CreationDate, ViewCount, Body, Title, " \
                        "Tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
@@ -73,8 +75,6 @@ def processing(input, columns):
         print(row_counter)
         row = [transform_column(elem.attrib[column]) if column in elem.attrib else None for column in columns]
         if row[1] == '1':  # Question table
-            #print("Questions")
-            #print(row[6])
             val = (row[0], row[1], row[2], row[4], row[5], row[6], row[8], row[9])
             my_cursor.execute(insert_questions, val)
             if row[2] == None:
@@ -109,4 +109,4 @@ def processing(input, columns):
 if __name__ == '__main__':
     columns = ["Id", "PostTypeId", "AcceptedAnswerId", "ParentId", "CreationDate", "ViewCount", "Body",
                "LastEditDate", "Title", "Tags", "ContentLicense"]
-    processing("Posts.xml", columns)
+    processing("Posts.xml", columns, deleted)
